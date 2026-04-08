@@ -635,30 +635,32 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 
     <!-- TAB: GÖRSEL OCR -->
     <div class="tab-pane" id="tab-ocr">
-      <div class="grid-2" style="align-items:start;">
+
+      <!-- AYARLAR + YÜKLEME -->
+      <div class="grid-2" style="align-items:start; margin-bottom:16px;">
         <div>
           <div class="card">
-            <div class="card-title">Görsel Yükle</div>
+            <div class="card-title">Toplu Görsel Yükle</div>
             <div class="upload-zone" id="imgDropZone">
-              <input type="file" accept="image/*" onchange="loadImage(event)" id="imgFileInput">
+              <input type="file" accept="image/*" multiple onchange="loadImages(event)" id="imgFileInput">
               <div class="uz-icon">🖼️</div>
-              <div class="uz-title">Tarife veya cihaz görselini yükle</div>
-              <div class="uz-sub">JPG · PNG · WebP — WhatsApp'tan gelen görseller dahil</div>
+              <div class="uz-title">Birden fazla görsel seç veya sürükle</div>
+              <div class="uz-sub">JPG · PNG · WebP — Aynı anda 20+ görsel yüklenebilir</div>
             </div>
           </div>
-
-          <div class="card" id="imgPreviewCard" style="display:none;">
-            <div class="card-title">Görsel Önizleme</div>
-            <div class="ocr-image-wrap">
-              <img id="ocrPreviewImg" src="" alt="Yüklenen görsel">
+          <!-- Thumbnail grid -->
+          <div class="card" id="imgThumbCard" style="display:none;">
+            <div class="card-title" style="justify-content:space-between;align-items:center;display:flex;">
+              <span id="thumbCardTitle">Yüklenen Görseller</span>
+              <button class="btn btn-secondary btn-sm" onclick="clearImages()">🗑️ Temizle</button>
             </div>
+            <div id="imgThumbGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:8px;"></div>
           </div>
         </div>
 
         <div>
           <div class="card">
             <div class="card-title">OCR Ayarları</div>
-
             <div class="form-group">
               <label>Çıkarılacak Veri Tipi</label>
               <select class="form-control" id="ocrType">
@@ -667,41 +669,53 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
                 <option value="genel">Genel Metin / Tablo</option>
               </select>
             </div>
-
             <div class="form-group">
-              <label>Çıktı Dili</label>
-              <select class="form-control" id="ocrLang">
-                <option value="tr">Türkçe</option>
-                <option value="en">English</option>
+              <label>Birden fazla görsel varsa</label>
+              <select class="form-control" id="ocrMergeMode">
+                <option value="merge">Tüm sonuçları tek tabloda birleştir</option>
+                <option value="separate">Her görseli ayrı sheet olarak kaydet</option>
               </select>
             </div>
-
             <div id="ocrKeyWarning" class="alert alert-info" style="display:none;">
               ⚠️ Sol menüden Claude API Key girmen gerekiyor
             </div>
-
-            <button class="btn btn-primary btn-block btn-lg" onclick="runOCR()" id="ocrBtn">
-              🔍 Veriyi Çıkar
+            <button class="btn btn-primary btn-block btn-lg" onclick="runOCRBulk()" id="ocrBtn">
+              🔍 Tümünü İşle
             </button>
           </div>
 
-          <div class="card" id="ocrResultCard" style="display:none;">
-            <div class="card-title" style="justify-content:space-between;align-items:center;display:flex;">
-              Çıkarılan Veri
-              <div style="display:flex;gap:8px;">
-                <button class="btn btn-secondary btn-sm" onclick="downloadOcrCSV()">📥 CSV</button>
-                <button class="btn btn-green btn-sm" onclick="downloadOcrExcel()">📥 Excel</button>
+          <!-- İLERLEME -->
+          <div class="card" id="ocrProgressCard" style="display:none;">
+            <div class="card-title">İşlem Durumu</div>
+            <div id="ocrProgressList" style="display:flex;flex-direction:column;gap:6px;"></div>
+            <div style="margin-top:12px;">
+              <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text3);margin-bottom:4px;">
+                <span id="ocrProgressText">0 / 0</span>
+                <span id="ocrProgressPct">0%</span>
+              </div>
+              <div style="background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;">
+                <div id="ocrProgressBar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 0.3s;"></div>
               </div>
             </div>
-            <div id="ocrResultBody"></div>
-
-            <hr class="section-divider">
-            <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px;">Profil kurallarını bu veriye uygula:</div>
-            <div style="display:flex;gap:8px;">
-              <select class="form-control" id="ocrProfileApply" style="font-size:0.78rem;"></select>
-              <button class="btn btn-blue btn-sm" onclick="applyProfileToOcr()">Uygula</button>
-            </div>
           </div>
+        </div>
+      </div>
+
+      <!-- SONUÇ -->
+      <div class="card" id="ocrResultCard" style="display:none;">
+        <div class="card-title" style="justify-content:space-between;align-items:center;display:flex;">
+          <span id="ocrResultTitle">Çıkarılan Veri</span>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="downloadOcrCSV()">📥 CSV</button>
+            <button class="btn btn-green btn-sm" onclick="downloadOcrExcel()">📥 Excel</button>
+          </div>
+        </div>
+        <div id="ocrResultBody"></div>
+        <hr class="section-divider">
+        <div style="font-size:0.78rem;color:var(--text2);margin-bottom:8px;">Profil kurallarını bu veriye uygula:</div>
+        <div style="display:flex;gap:8px;">
+          <select class="form-control" id="ocrProfileApply" style="font-size:0.78rem;"></select>
+          <button class="btn btn-blue btn-sm" onclick="applyProfileToOcr()">Uygula + İndir</button>
         </div>
       </div>
     </div>
@@ -1379,11 +1393,23 @@ function downloadOcrCSV() {
 
 function downloadOcrExcel() {
   if (!state.ocrData) return;
-  const headers = Object.keys(state.ocrData[0] || {});
-  const rows = state.ocrData.map(r=>headers.map(h=>r[h]||''));
-  const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'OCR');
+  if (state.ocrMergeMode === 'separate' && state.ocrSheetMap) {
+    // Her görsel ayrı sheet
+    Object.entries(state.ocrSheetMap).forEach(([sheetName, records]) => {
+      if (!records.length) return;
+      const headers = [...new Set(records.flatMap(r => Object.keys(r).filter(k => k !== '_kaynak')))];
+      const rows = records.map(r => headers.map(h => r[h] !== null && r[h] !== undefined ? r[h] : ''));
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+      XLSX.utils.book_append_sheet(wb, ws, sheetName.substring(0, 31));
+    });
+  } else {
+    // Tek sheet - _kaynak sütununu dahil et
+    const headers = [...new Set(state.ocrData.flatMap(r => Object.keys(r)))];
+    const rows = state.ocrData.map(r => headers.map(h => r[h] !== null && r[h] !== undefined ? r[h] : ''));
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    XLSX.utils.book_append_sheet(wb, ws, 'OCR Sonucu');
+  }
   XLSX.writeFile(wb, 'ocr_output.xlsx');
 }
 
@@ -1395,109 +1421,232 @@ function triggerDownload(blob, filename) {
 }
 
 // ── OCR ───────────────────────────────────────────────
-let ocrImageBase64 = null;
+let ocrImages = []; // [{name, base64, mediaType, status, data}]
 
-function loadImage(event) {
-  const file = event.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    ocrImageBase64 = e.target.result;
-    document.getElementById('ocrPreviewImg').src = ocrImageBase64;
-    document.getElementById('imgPreviewCard').style.display = 'block';
-  };
-  reader.readAsDataURL(file);
+function loadImages(event) {
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+  ocrImages = [];
+  let loaded = 0;
+  files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      ocrImages.push({
+        name: file.name,
+        base64: e.target.result.split(',')[1],
+        mediaType: file.type || 'image/jpeg',
+        preview: e.target.result,
+        status: 'bekliyor', // bekliyor | işleniyor | tamam | hata
+        data: null,
+        error: null
+      });
+      loaded++;
+      if (loaded === files.length) renderThumbs();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderThumbs() {
+  const card = document.getElementById('imgThumbCard');
+  const grid = document.getElementById('imgThumbGrid');
+  const title = document.getElementById('thumbCardTitle');
+  card.style.display = 'block';
+  title.textContent = `${ocrImages.length} Görsel Yüklendi`;
+  grid.innerHTML = ocrImages.map((img, i) => `
+    <div id="thumb_${i}" style="position:relative;border-radius:8px;overflow:hidden;border:2px solid var(--border);aspect-ratio:1;cursor:pointer;" onclick="previewThumb(${i})">
+      <img src="${img.preview}" style="width:100%;height:100%;object-fit:cover;">
+      <div id="thumb_overlay_${i}" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;background:rgba(0,0,0,0.45);">
+        ⏳
+      </div>
+      <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.6);font-size:0.55rem;color:#fff;padding:2px 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        ${img.name}
+      </div>
+    </div>`).join('');
+}
+
+function updateThumbStatus(i, status) {
+  const overlay = document.getElementById(`thumb_overlay_${i}`);
+  const thumb = document.getElementById(`thumb_${i}`);
+  if (!overlay) return;
+  const map = { bekliyor: '⏳', işleniyor: '⚙️', tamam: '✅', hata: '❌' };
+  const colorMap = { bekliyor: 'var(--border)', işleniyor: 'var(--yellow)', tamam: 'var(--green)', hata: 'var(--accent)' };
+  overlay.textContent = map[status] || '⏳';
+  thumb.style.borderColor = colorMap[status] || 'var(--border)';
+}
+
+function previewThumb(i) {
+  const img = ocrImages[i];
+  // show in a quick modal-like alert
+  const w = window.open('', '_blank', 'width=600,height=700');
+  w.document.write(`<html><body style="margin:0;background:#000;display:flex;align-items:center;justify-content:center;height:100vh;">
+    <img src="${img.preview}" style="max-width:100%;max-height:100vh;object-fit:contain;"></body></html>`);
+}
+
+function clearImages() {
+  ocrImages = [];
+  document.getElementById('imgThumbCard').style.display = 'none';
+  document.getElementById('imgFileInput').value = '';
+  document.getElementById('ocrProgressCard').style.display = 'none';
+  document.getElementById('ocrResultCard').style.display = 'none';
+  state.ocrData = null;
 }
 
 const OCR_PROMPTS = {
   tarife: `Bu görselde Turkcell tarifeleri var. Tüm tarifeleri JSON array olarak çıkar.
 Her tarife için: tarife_adi, aylik_fiyat (sayı, TL), internet_gb (sayı), dakika (sayı, sınırsızsa 9999), sms (sayı, sınırsızsa 9999), aciklama.
 SADECE geçerli JSON array döndür. Başka hiçbir şey yazma. Kod bloğu kullanma.`,
-
   cihaz: `Bu görselde telefon/cihaz listesi var. Tüm cihazları JSON array olarak çıkar.
 Her cihaz için: cihaz_adi, pesin_fiyat (sayı TL, yoksa null), taksit_tutari (sayı TL aylık, yoksa null), taksit_sayisi (sayı, yoksa null), toplam_taksitli_fiyat (sayı TL, yoksa null), bayi_karliligi (sayı TL, yoksa null).
 SADECE geçerli JSON array döndür. Başka hiçbir şey yazma. Kod bloğu kullanma.`,
-
   genel: `Bu görseldeki tüm metin ve tablo içeriğini oku.
-Eğer tablo varsa JSON array olarak yapılandır, her satır bir nesne olsun.
+Tablo varsa JSON array olarak yapılandır, her satır bir nesne olsun.
 JSON array döndür. Başka hiçbir şey yazma. Kod bloğu kullanma.`
 };
 
-async function runOCR() {
-  const apiKey = document.getElementById('apiKeyInput').value.trim();
-  if (!apiKey) {
-    document.getElementById('ocrKeyWarning').style.display = 'flex';
-    return;
+async function callClaudeVision(base64, mediaType, prompt, apiKey) {
+  const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5',
+      max_tokens: 4096,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: prompt }
+        ]
+      }]
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(()=>({error:{message:resp.statusText}}));
+    throw new Error(err.error?.message || resp.statusText);
   }
+  const data = await resp.json();
+  return data.content[0].text;
+}
+
+async function runOCRBulk() {
+  const apiKey = document.getElementById('apiKeyInput').value.trim();
+  if (!apiKey) { document.getElementById('ocrKeyWarning').style.display = 'flex'; return; }
   document.getElementById('ocrKeyWarning').style.display = 'none';
-  if (!ocrImageBase64) { alert('Önce görsel yükle'); return; }
+  if (!ocrImages.length) { alert('Önce görsel yükle'); return; }
 
   const btn = document.getElementById('ocrBtn');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Analiz ediliyor...';
+  btn.innerHTML = '<span class="spinner"></span> İşleniyor...';
 
   const type = document.getElementById('ocrType').value;
   const prompt = OCR_PROMPTS[type];
-  const base64Data = ocrImageBase64.split(',')[1];
-  const mediaType = ocrImageBase64.split(';')[0].split(':')[1] || 'image/jpeg';
+  const mergeMode = document.getElementById('ocrMergeMode').value;
+  const total = ocrImages.length;
 
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-opus-4-5',
-        max_tokens: 4096,
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64Data } },
-            { type: 'text', text: prompt }
-          ]
-        }]
-      })
-    });
+  // Show progress card
+  const progCard = document.getElementById('ocrProgressCard');
+  progCard.style.display = 'block';
+  progCard.scrollIntoView({behavior:'smooth'});
 
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error?.message || resp.statusText);
+  const progList = document.getElementById('ocrProgressList');
+  progList.innerHTML = ocrImages.map((img, i) =>
+    `<div id="prog_${i}" style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);">
+      <span id="prog_icon_${i}" style="font-size:1rem;width:20px;text-align:center;">⏳</span>
+      <span style="flex:1;font-size:0.8rem;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${img.name}</span>
+      <span id="prog_status_${i}" style="font-size:0.72rem;color:var(--text3);font-family:var(--mono);">bekliyor</span>
+    </div>`
+  ).join('');
+
+  let allData = [];
+  let sheetMap = {}; // for separate mode
+  let successCount = 0;
+  let errorCount = 0;
+
+  for (let i = 0; i < total; i++) {
+    const img = ocrImages[i];
+
+    // Update UI
+    document.getElementById(`prog_icon_${i}`).textContent = '⚙️';
+    document.getElementById(`prog_status_${i}`).textContent = 'işleniyor...';
+    document.getElementById(`prog_status_${i}`).style.color = 'var(--yellow)';
+    updateThumbStatus(i, 'işleniyor');
+
+    // Progress bar
+    document.getElementById('ocrProgressText').textContent = `${i+1} / ${total}`;
+    document.getElementById('ocrProgressPct').textContent = `${Math.round((i/total)*100)}%`;
+    document.getElementById('ocrProgressBar').style.width = `${(i/total)*100}%`;
+
+    try {
+      const text = await callClaudeVision(img.base64, img.mediaType, prompt, apiKey);
+      let clean = text.trim().replace(/^```json?\s*/i,'').replace(/\s*```$/,'').trim();
+      const parsed = JSON.parse(clean);
+      const records = Array.isArray(parsed) ? parsed : [parsed];
+      img.data = records;
+      img.status = 'tamam';
+
+      // Tag each record with source image name
+      records.forEach(r => r._kaynak = img.name);
+      allData = allData.concat(records);
+      sheetMap[img.name.replace(/\.[^.]+$/, '')] = records;
+      successCount++;
+
+      document.getElementById(`prog_icon_${i}`).textContent = '✅';
+      document.getElementById(`prog_status_${i}`).textContent = `${records.length} kayıt`;
+      document.getElementById(`prog_status_${i}`).style.color = 'var(--green)';
+      updateThumbStatus(i, 'tamam');
+    } catch(e) {
+      img.status = 'hata';
+      img.error = e.message;
+      errorCount++;
+      document.getElementById(`prog_icon_${i}`).textContent = '❌';
+      document.getElementById(`prog_status_${i}`).textContent = 'hata';
+      document.getElementById(`prog_status_${i}`).style.color = 'var(--accent)';
+      document.getElementById(`prog_status_${i}`).title = e.message;
+      updateThumbStatus(i, 'hata');
     }
 
-    const data = await resp.json();
-    const text = data.content[0].text;
-
-    // Parse JSON
-    let clean = text.trim().replace(/^```json?\s*/i,'').replace(/\s*```$/,'').trim();
-    const parsed = JSON.parse(clean);
-    state.ocrData = Array.isArray(parsed) ? parsed : [parsed];
-
-    renderOcrResult(state.ocrData);
-    populateProfileSelects();
-
-  } catch(e) {
-    document.getElementById('ocrResultCard').style.display = 'block';
-    document.getElementById('ocrResultBody').innerHTML = `
-      <div class="alert alert-error">❌ Hata: ${e.message}</div>`;
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = '🔍 Veriyi Çıkar';
+    // Small delay to avoid rate limiting
+    if (i < total - 1) await new Promise(r => setTimeout(r, 500));
   }
+
+  // Final progress
+  document.getElementById('ocrProgressText').textContent = `${total} / ${total} tamamlandı`;
+  document.getElementById('ocrProgressPct').textContent = '100%';
+  document.getElementById('ocrProgressBar').style.width = '100%';
+  document.getElementById('ocrProgressBar').style.background = errorCount ? 'var(--yellow)' : 'var(--green)';
+
+  btn.disabled = false;
+  btn.innerHTML = '🔍 Tümünü İşle';
+
+  if (!allData.length) return;
+
+  // Store for download
+  state.ocrData = allData;
+  state.ocrSheetMap = sheetMap;
+  state.ocrMergeMode = mergeMode;
+
+  // Render result
+  const headers = [...new Set(allData.flatMap(r => Object.keys(r)))];
+  const rows = allData.map(r => headers.map(h => r[h] !== null && r[h] !== undefined ? r[h] : ''));
+
+  const resultCard = document.getElementById('ocrResultCard');
+  resultCard.style.display = 'block';
+  document.getElementById('ocrResultTitle').textContent =
+    `Çıkarılan Veri — ${allData.length} kayıt · ${successCount} görsel ✅${errorCount ? ` · ${errorCount} hata ❌` : ''}`;
+  document.getElementById('ocrResultBody').innerHTML = `
+    <div class="data-table-wrap">${buildTableHTML(headers, rows.slice(0,10))}</div>
+    ${rows.length > 10 ? `<div style="font-size:0.72rem;color:var(--text3);margin-top:6px;">İlk 10 satır · ${rows.length} toplam</div>` : ''}`;
+  populateProfileSelects();
+  resultCard.scrollIntoView({behavior:'smooth'});
 }
 
-function renderOcrResult(data) {
-  if (!data || !data.length) return;
-  const headers = Object.keys(data[0]);
-  const rows = data.map(r => headers.map(h => r[h] !== null && r[h] !== undefined ? r[h] : ''));
-  document.getElementById('ocrResultCard').style.display = 'block';
-  document.getElementById('ocrResultBody').innerHTML = `
-    <div class="alert alert-success" style="margin-bottom:12px;">✅ ${data.length} kayıt çıkarıldı</div>
-    <div class="data-table-wrap">${buildTableHTML(headers, rows.slice(0,8))}</div>
-    ${rows.length > 8 ? `<div style="font-size:0.72rem;color:var(--text3);margin-top:6px;">İlk 8 satır gösteriliyor · ${rows.length} toplam</div>` : ''}`;
-}
+// legacy single image compat
+async function runOCR() { await runOCRBulk(); }
 
 function applyProfileToOcr() {
   if (!state.ocrData) return;
